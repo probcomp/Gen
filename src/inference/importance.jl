@@ -107,4 +107,26 @@ function importance_resampling(model::GenerativeFunction{T,U}, model_args::Tuple
     return (model_trace::U, log_ml_estimate::Float64)
 end
 
-export importance_sampling, importance_resampling
+"""
+    log_ml_estimate = conditional_is_estimator(
+        trace::Trace, observed::Selection, num_samples::Int)
+
+Given a trace sampled from the conditional distribution given observed choices,
+return an estimate of the log marginal likelihood of the observed choices that is a
+stochastic upper bound on the true log marginal likelihood.
+"""
+function conditional_is_estimator(trace::Trace, observed::Selection, num_samples::Int)
+    model = get_gen_fn(trace)
+    model_args = get_args(trace)
+    observations = get_selected(get_choices(trace), observed)
+    log_weights = Vector{Float64}(undef, num_samples)
+    log_weights[1] = project(trace, observed)
+    for i=2:num_samples
+        (_, log_weights[i]) = generate(model, model_args, observations)
+    end
+    log_total_weight = logsumexp(log_weights)
+    log_ml_estimate = log_total_weight - log(num_samples)
+    return log_ml_estimate
+end
+
+export importance_sampling, importance_resampling, conditional_is_estimator
