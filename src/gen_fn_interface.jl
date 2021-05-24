@@ -62,6 +62,13 @@ When there is no non-addressed randomness, this simplifies to the log probabilit
 function get_score end
 
 """
+    logpdf(trace)
+
+Synonym for [`get_score`](@ref).
+"""
+logpdf(trace::Trace) = get_score(trace)
+
+"""
     gen_fn::GenerativeFunction = get_gen_fn(trace)
 
 Return the generative function that produced the given trace.
@@ -423,3 +430,4 @@ export update
 export regenerate
 export accumulate_param_gradients!
 export choice_gradients
+export logpdf

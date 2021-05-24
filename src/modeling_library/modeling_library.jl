@@ -80,6 +80,8 @@ include("unfold/unfold.jl")
 include("recurse/recurse.jl")
 include("switch/switch.jl")
 
+include("override_internal_proposal.jl")
+
 #############################################################
 # abstractions for constructing custom generative functions #
 #############################################################
