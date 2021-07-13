@@ -70,6 +70,9 @@ function dynamic_trace_impl(expr::Expr)
     @assert expr.head == :gentrace "Not a Gen trace expression."
     call, addr = expr.args[1], expr.args[2]
     if (call.head != :call) error("syntax error in @trace at $(call)") end
+    if (call.args[1] == :(:))
+        error("syntax error (missing comma in @trace expr?) at $(call)")
+    end
     fn = call.args[1]
     args = Expr(:tuple, call.args[2:end]...)
     if addr != nothing
