@@ -76,6 +76,24 @@ end
 
 const dx = 1e-6
 
+"""
+Attempts to serialize then deserialize the given trace, and returns
+whether the pre-serialization and post-serialization traces are equal.
+"""
+function serialize_loop_successful(tr)
+    io = IOBuffer()
+    serialize_trace(io, tr)
+    seek(io, 0)
+    des_tr = deserialize_trace(io, get_gen_fn(tr))
+
+    if get_choices(des_tr) != get_choices(tr)
+        display(tr)
+        display(des_tr)
+    end
+
+    return get_choices(des_tr) == get_choices(tr)
+end
+
 include("autodiff.jl")
 include("diff.jl")
 include("selection.jl")

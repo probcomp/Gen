@@ -60,6 +60,8 @@ function check_length(len::Int)
     end
 end
 
+_gen_fn_at_addr(gf::Unfold, _) = gf.kernel
+
 include("simulate.jl")
 include("generate.jl")
 include("propose.jl")

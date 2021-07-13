@@ -30,6 +30,19 @@ function (gen_fn::Switch{C})(index::C, args...) where C
 end
 
 include("trace.jl")
+
+function to_serializable_trace(tr::SwitchTrace)
+    GenericSerializableTrace(to_serializable_trace(tr.branch), (tr.index, tr.retval, tr.args, tr.score, tr.noise))
+end
+function from_serializable_trace(c::GenericSerializableTrace, gf::Switch)
+    (index, retval, args, score, noise) = c.properties
+    GenericSerializableTrace(
+        gf, index,
+        from_serializable_trace(c.subtraces, gf.branches[index]),
+        retval, args, score, noise
+    )
+end
+
 include("assess.jl")
 include("propose.jl")
 include("simulate.jl")

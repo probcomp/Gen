@@ -350,6 +350,17 @@ The set of elements (either arguments, random choices, or trainable parameters) 
 If the return value of the function is conditionally dependent on any element in the gradient source set given the arguments and values of all other random choices, for all possible traces of the function, then the generative function requires a *return value gradient* to compute gradients with respect to elements of the gradient source set.
 This static property of the generative function is reported by [`accepts_output_grad`](@ref).
 
+## Serialization
+To serialize a trace `tr` for a generative function `gf`
+(stave the trace to disk), a user may call
+```julia
+serialize_trace(filename_or_io::Union{IO, AbstractString}, tr)
+```
+To recover the trace, a user may call
+```julia
+deserialized_tr = deserialize_trace(filename_or_io, gf)
+```
+
 ## Generative function interface
 
 The complete set of methods in the generative function interface (GFI) is:

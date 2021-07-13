@@ -86,7 +86,9 @@ const return_value_fieldname = gensym("retval")
 struct TraceField
     fieldname::Symbol
     typ::Union{Symbol,Expr,QuoteNode}
+    holds_subtrace::Bool
 end
+TraceField(f, t) = TraceField(f, t, false)
 
 function get_trace_fields(ir::StaticIR, options::StaticIRGenerativeFunctionOptions)
     fields = TraceField[]
@@ -103,7 +105,7 @@ function get_trace_fields(ir::StaticIR, options::StaticIRGenerativeFunctionOptio
     for node in ir.call_nodes
         subtrace_fieldname = get_subtrace_fieldname(node)
         subtrace_type = QuoteNode(get_trace_type(node.generative_function))
-        push!(fields, TraceField(subtrace_fieldname, subtrace_type))
+        push!(fields, TraceField(subtrace_fieldname, subtrace_type, true))
     end
     if options.cache_julia_nodes
         for node in ir.julia_nodes
@@ -124,8 +126,54 @@ function generate_trace_struct(ir::StaticIR, trace_struct_name::Symbol, options:
     mutable = false
     fields = get_trace_fields(ir, options)
     field_exprs = map((f) -> Expr(:(::), f.fieldname, f.typ), fields)
-    Expr(:struct, mutable, Expr(:(<:), trace_struct_name, QuoteNode(StaticIRTrace)),
+    return (
+        fields,
+        Expr(:struct, mutable, Expr(:(<:), trace_struct_name, QuoteNode(StaticIRTrace)),
          Expr(:block, field_exprs..., Expr(:(::), static_ir_gen_fn_ref, QuoteNode(Any))))
+   )
+end
+
+function generate_serialization_methods(ir::StaticIR, trace_struct_name::Symbol, gen_fn_typename::Symbol, fields)
+    to_subtraces_exprs = [
+        :($(GlobalRef(Gen, :to_serializable_trace))(tr.$(field.fieldname)))
+        for field in fields if field.holds_subtrace
+    ]
+    to_properties_exprs = [:(tr.$(field.fieldname)) for field in fields if !field.holds_subtrace]
+    
+    # fields will have a bunch of properties, then the subtraces, then more properties
+    num_initial_props = 0
+    for field in fields
+        if !field.holds_subtrace
+            num_initial_props += 1
+        else
+            break;
+        end
+    end
+    
+    gen_fns = [node.generative_function for node in ir.call_nodes]
+    
+    quote
+        function $(GlobalRef(Gen, :to_serializable_trace))(tr::$trace_struct_name)
+            return $(GlobalRef(Gen, :GenericSerializableTrace))(
+                $(Expr(:tuple, to_subtraces_exprs...)),
+                $(Expr(:tuple, to_properties_exprs...))
+            )
+        end
+        function $(GlobalRef(Gen, :from_serializable_trace))(
+            st::$(GlobalRef(Gen, :GenericSerializableTrace)),
+            gf::$gen_fn_typename
+        )
+            return $trace_struct_name(
+                st.properties[1:$num_initial_props]...,
+                (
+                    $(GlobalRef(Gen, :from_serializable_trace))(args...)
+                    for args in zip(st.subtraces, $gen_fns)
+                )...,
+                st.properties[$(num_initial_props + 1):end]...,
+                gf
+            )
+        end
+    end
 end
 
 function generate_isempty(trace_struct_name::Symbol)
@@ -284,7 +332,7 @@ end
 
 function generate_trace_type_and_methods(ir::StaticIR, name::Symbol, options::StaticIRGenerativeFunctionOptions)
     trace_struct_name = gensym("StaticIRTrace_$name")
-    trace_struct_expr = generate_trace_struct(ir, trace_struct_name, options)
+    (fields, trace_struct_expr) = generate_trace_struct(ir, trace_struct_name, options)
     isempty_expr = generate_isempty(trace_struct_name)
     get_score_expr = generate_get_score(trace_struct_name)
     get_args_expr = generate_get_args(ir, trace_struct_name)
@@ -302,8 +350,10 @@ function generate_trace_type_and_methods(ir::StaticIR, name::Symbol, options::St
                  get_args_expr, get_retval_expr,
                  get_choices_expr, get_schema_expr, get_values_shallow_expr,
                  get_submaps_shallow_expr, static_get_value_exprs...,
-                 static_has_value_exprs..., static_get_submap_exprs..., getindex_exprs...)
-    (exprs, trace_struct_name)
+                 static_has_value_exprs..., static_get_submap_exprs...,
+                 getindex_exprs...
+                )
+    (exprs, trace_struct_name, fields)
 end
 
 export StaticIRTrace

@@ -25,6 +25,7 @@ function get_address_schema(::Type{T}) where {T<:ChoiceAtChoiceMap}
 end
 get_value(choices::ChoiceAtChoiceMap, addr::Pair) = _get_value(choices, addr)
 has_value(choices::ChoiceAtChoiceMap, addr::Pair) = _has_value(choices, addr)
+has_value(choices::ChoiceAtChoiceMap, addr) = addr == choices.key
 function get_value(choices::ChoiceAtChoiceMap{T,K}, addr::K) where {T,K}
     choices.key == addr ? choices.value : throw(KeyError(choices, addr))
 end
@@ -170,6 +171,13 @@ function accumulate_param_gradients!(trace::ChoiceAtTrace, retval_grad)
     end
     kernel_arg_grads = logpdf_grad(trace.gen_fn.dist, trace.value, trace.kernel_args...)
     (kernel_arg_grads[2:end]..., nothing)
+end
+
+function to_serializable_trace(tr::ChoiceAtTrace)
+    return GenericSerializableTrace(nothing, (tr.value, tr.key, tr.kernel_args, tr.score))
+end
+function from_serializable_trace(st::GenericSerializableTrace, gf::ChoiceAtCombinator)
+    return get_trace_type(gf)(gf, st.properties...)
 end
 
 export choice_at

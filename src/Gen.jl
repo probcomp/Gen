@@ -49,6 +49,9 @@ include("trie.jl")
 # generative function interface
 include("gen_fn_interface.jl")
 
+# serialization/deserialization for traces
+include("serialization.jl")
+
 # built-in data types for arg-diff and ret-diff values
 include("diff.jl")
 

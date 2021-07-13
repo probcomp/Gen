@@ -175,6 +175,7 @@ function gen_fn_changed_error(addr)
     error("Generative function changed at address: $addr")
 end
 
+include("serialization.jl")
 include("simulate.jl")
 include("generate.jl")
 include("propose.jl")

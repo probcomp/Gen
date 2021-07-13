@@ -228,6 +228,17 @@ If your generative function has trainable parameters, then implement:
 
 - [`accumulate_param_gradients!`](@ref)
 
+#### Supporting trace serialization
+To support trace serialization, a trace type of type `T` for a generative function of type `G` must convertable into a `SerializableTrace` object, and must be recoverable from a `SerializableTrace` object and the generative function.
+```@docs
+SerializableTrace
+to_serializable_trace
+from_serializable_trace
+```
+A user must implement `to_serializable_Trace(::T)`, and `from_serializable_Trace(::ST, ::G)` for some concrete type `ST <: SerializableTrace`.  This may be a custom type, or the user may use the built-in type
+```@docs
+GenericSerializableTrace
+```
 
 ## Custom modeling languages
 

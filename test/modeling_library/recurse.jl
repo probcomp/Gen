@@ -177,6 +177,8 @@ end
     @test choices[(4, Val(:production)) => :rule] == 4
     @test choices[(4, Val(:aggregation)) => :prefix] == false
 
+    @test serialize_loop_successful(trace)
+
     # update non-structure choice
     new_constraints = choicemap()
     new_constraints[(3, Val(:aggregation)) => :prefix] = false

@@ -13,6 +13,8 @@
         @test swtr[:z] == tr[:z]
         @test project(swtr, AllSelection()) == project(swtr.branch, AllSelection())
         @test project(swtr, EmptySelection()) == swtr.noise
+
+        @test serialize_loop_successful(tr)
     end
 
     # ------------ Bare combinator ------------ #

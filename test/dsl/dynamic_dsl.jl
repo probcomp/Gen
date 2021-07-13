@@ -534,4 +534,26 @@ end
 
 end
 
+@testset "serialization" begin
+    @gen function bar()
+        @trace(normal(0, 1), :a)
+    end
+
+    @gen function baz()
+        @trace(normal(0, 1), :b)
+    end
+
+    @gen function foo()
+        if @trace(bernoulli(0.4), :branch)
+            @trace(normal(0, 1), :x)
+            @trace(bar(), :u)
+        else
+            @trace(normal(0, 1), :y)
+            @trace(baz(), :v)
+        end
+    end
+    tr = simulate(foo, ())
+    @test serialize_loop_successful(tr)
+end
+
 end

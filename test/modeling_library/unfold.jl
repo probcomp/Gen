@@ -15,6 +15,11 @@
         @test length(foo(5, 0., 1.0, 1.0)) == 5
     end
 
+    @testset "serialization" begin
+        tr = simulate(foo, (3, 0.1, 0.2, 0.3))
+        @test serialize_loop_successful(tr)
+    end
+
     @testset "simulate" begin
         x_init = 0.1
         alpha = 0.2

@@ -43,6 +43,9 @@ mutable struct DynamicDSLTrace{T} <: Trace
         # retval is not known yet
         new(gen_fn, trie, true, 0, 0, args)
     end
+    function DynamicDSLTrace{T}(gen_fn::T, trie, isempty, score, noise, args, retval) where {T}
+        new(gen_fn, trie, isempty, score, noise, args, retval)
+    end
 end
 
 set_retval!(trace::DynamicDSLTrace, retval) = (trace.retval = retval)

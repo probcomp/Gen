@@ -37,10 +37,10 @@ function generate_generative_function(ir::StaticIR, name::Symbol; track_diffs=fa
 end
 
 function generate_generative_function(ir::StaticIR, name::Symbol, options::StaticIRGenerativeFunctionOptions)
-
-    (trace_defns, trace_struct_name) = generate_trace_type_and_methods(ir, name, options)
-
     gen_fn_type_name = gensym("StaticGenFunction_$name")
+
+    (trace_defns, trace_struct_name, tracefields) = generate_trace_type_and_methods(ir, name, options)
+
     return_type = ir.return_node.typ
     trace_type = trace_struct_name
     has_argument_grads = tuple(map((node) -> node.compute_grad, ir.arg_nodes)...)
@@ -61,7 +61,10 @@ function generate_generative_function(ir::StaticIR, name::Symbol, options::Stati
         $(GlobalRef(Gen, :get_gen_fn_type))(::Type{$trace_struct_name}) = $gen_fn_type_name
         $(GlobalRef(Gen, :get_options))(::Type{$gen_fn_type_name}) = $(QuoteNode(options))
     end
-    Expr(:block, trace_defns, gen_fn_defn, Expr(:call, gen_fn_type_name, :(Dict{Symbol,Any}()), :(Dict{Symbol,Any}())))
+
+    serialization_code = generate_serialization_methods(ir, trace_struct_name, gen_fn_type_name, tracefields)
+
+    Expr(:block, trace_defns, gen_fn_defn, serialization_code, Expr(:call, gen_fn_type_name, :(Dict{Symbol,Any}()), :(Dict{Symbol,Any}())))
 end
 
 include("print_ir.jl")

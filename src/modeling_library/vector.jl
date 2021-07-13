@@ -184,3 +184,20 @@ function vector_remove_deleted_applications(subtraces, retval, prev_length, new_
     end
     (subtraces, retval)
 end
+
+#################
+# Serialization #
+#################
+function to_serializable_trace(trace::VectorTrace)
+    GenericSerializableTrace(
+        [to_serializable_trace(st) for st in trace.subtraces],
+        (trace.retval, trace.args, trace.len, trace.num_nonempty, trace.score, trace.noise)
+    )
+end
+function from_serializable_trace(st::GenericSerializableTrace, gf::GenerativeFunction{<:Any, VectorTrace{GenFnType, T, U}}) where {GenFnType, T, U}
+    subtraces = PersistentVector{U}(
+        [from_serializable_trace(serialized_subtrace, _gen_fn_at_addr(gf, i))
+        for (i, serialized_subtrace) in enumerate(st.subtraces)]
+    )
+    get_trace_type(gf)(gf, subtraces, st.properties...)
+end

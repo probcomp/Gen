@@ -84,6 +84,9 @@
     @test w == 0.
     @test get_retval(trace) == 1 + 2 + 3
 
+    # serialization
+    @test serialize_loop_successful(trace)
+
     # update (UnknownChange)
     trace = simulate(MyDeterministicGF(), ([1, 2, 3],))
     new_trace, w, retdiff = update(trace, ([1, 2, 4],), (UnknownChange(),), EmptyChoiceMap())

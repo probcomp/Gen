@@ -49,6 +49,10 @@
         trace
     end
 
+    @testset "serialization" begin
+        @test serialize_loop_successful(get_trace())
+    end
+
     @testset "project" begin
         trace = get_trace()
         @test isapprox(project(trace, EmptySelection()), 0.)

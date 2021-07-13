@@ -2,7 +2,7 @@
 # Trie #
 ##################
 
-struct Trie{K,V} <: ChoiceMap
+struct Trie{K,V}
     leaf_nodes::Dict{K,V}
     internal_nodes::Dict{K,Trie{K,V}}
 end
@@ -32,6 +32,7 @@ Base.isempty(trie::Trie) = isempty(trie.leaf_nodes) && isempty(trie.internal_nod
 get_leaf_nodes(trie::Trie) = trie.leaf_nodes
 get_internal_nodes(trie::Trie) = trie.internal_nodes
 
+Base.:(==)(t1::Trie, t2::Trie) = get_leaf_nodes(t1) == get_leaf_nodes(t2) && get_internal_nodes(t1) == get_internal_nodes(t2)
 function Base.values(trie::Trie)
     iterators = convert(Vector{Any}, collect(map(values, values(trie.internal_nodes))))
     push!(iterators, values(trie.leaf_nodes))
@@ -178,6 +179,28 @@ get_address_schema(::Trie) = DynamicSchema()
 Base.haskey(trie::Trie, key) = has_leaf_node(trie, key)
 
 Base.getindex(trie::Trie, key) = get_leaf_node(trie, key)
+
+"""
+    triemap(trie::Trie, key_converter, leaf_converter)
+
+Get a new trie by applying the function `key_converter` to every key in the trie
+and applying the function `leaf_converter` to every leaf node in the trie.
+"""
+function triemap(trie::Trie{K, V}, key_converter, leaf_converter) where {K, V}
+    new_keytype = Core.Compiler.return_type(key_converter, Tuple{K})
+    KT = Union{Base.return_types(key_converter, (K,))...}
+    LT = Union{Base.return_types(leaf_converter, (V,))...}
+    converted_leafs = Dict{KT, LT}(
+        key_converter(k) => leaf_converter(v) for (k, v) in trie.leaf_nodes
+    )
+    converted_internals = Dict{KT, Trie{KT, LT}}(
+        key_converter(k) => convert_to_serializable_trie(subtrie, key_converter, leaf_converter, new_keytype, new_leaftype)
+        for (k, subtrie) in trie.internal_nodes
+    )
+    
+    return Trie{KT, LT}(converted_leafs, converted_internals)
+end
+
 
 export Trie
 export set_internal_node!

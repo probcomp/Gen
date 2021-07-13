@@ -38,6 +38,11 @@
         @test isapprox(weight, logpdf(normal, z1, 4., 1.))
     end
 
+    @testset "serialization" begin
+        (trace, _) = generate(bar, (xs[1:2], ys[1:2]))
+        @test serialize_loop_successful(trace)
+    end
+
     @testset "propose" begin
         (choices, weight) = propose(bar, (xs[1:2], ys[1:2]))
         z1 = choices[1 => :z]

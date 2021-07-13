@@ -157,4 +157,11 @@ function accumulate_param_gradients!(trace::CallAtTrace, retval_grad)
     (kernel_input_grads..., nothing)
 end
 
+function to_serializable_trace(tr::CallAtTrace)
+    return GenericSerializableTrace(to_serializable_trace(tr.subtrace), tr.key)
+end
+function from_serializable_trace(st::GenericSerializableTrace, gf::CallAtCombinator)
+    return get_trace_type(gf)(gf, from_serializable_trace(st.subtraces, gf.kernel), st.properties)
+end
+
 export call_at
