@@ -1,4 +1,5 @@
 include("custom_determ.jl")
+include("structs.jl")
 include("distributions.jl")
 include("choice_at.jl")
 include("call_at.jl")

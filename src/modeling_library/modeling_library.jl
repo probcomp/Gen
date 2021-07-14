@@ -78,7 +78,8 @@ include("recurse/recurse.jl")
 include("switch/switch.jl")
 
 #############################################################
-# abstractions for constructing custom generative functions #
+# custom deterministic generative functions #
 #############################################################
 
 include("custom_determ.jl")
+include("structs.jl")
