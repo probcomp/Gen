@@ -34,7 +34,7 @@ Samples an `Array{Float64, max(N1, N2)}` of shape
 `Broadcast.broadcast_shapes(size(mu), size(std))` where each element is
 independently normally distributed.  This is equivalent to (a reshape of) a
 multivariate normal with diagonal covariance matrix, but its implementation is
-more efficient than that of the more general `mvnormal` for this case.
+more efficient than that of the more general [`mvnormal`](@ref) for this case.
 
 The shapes of `mu` and `std` must be broadcast-compatible.
 
@@ -65,8 +65,6 @@ function logpdf(::BroadcastedNormal,
     assert_has_shape(x, broadcast_shapes_or_crash(mu, std);
                      msg="Shape of `x` does not agree with the sample space")
     z = (x .- mu) ./ std
-    var = std .* std
-    diff = x .- mu
     sum(- (abs2.(z) .+ log(2π)) / 2 .- log.(std))
 end
 
@@ -85,10 +83,46 @@ function logpdf_grad(::BroadcastedNormal,
     assert_has_shape(x, broadcast_shapes_or_crash(mu, std);
                      msg="Shape of `x` does not agree with the sample space")
     z = (x .- mu) ./ std
-    deriv_x = sum(- z ./ std)
+    deriv_x = - z ./ std
     deriv_mu = -deriv_x
-    deriv_std = sum(-1. ./ std .+ abs2.(z) ./ std)
-    (deriv_x, deriv_mu, deriv_std)
+    deriv_std = -1. ./ std .+ abs2.(z) ./ std
+    (_unbroadcast_like(x, deriv_x), 
+     _unbroadcast_like(mu, deriv_mu), 
+     _unbroadcast_like(std, deriv_std))
+end
+
+_unbroadcast_like(::Real, full_arr) = sum(full_arr)
+_unbroadcast_like(::AbstractArray{<:Real, 0}, full_arr::Real) = fill(full_arr)
+function _unbroadcast_like(a::AbstractArray{<:Real, N},
+                           full_arr::AbstractArray{T}
+                          )::AbstractArray{T, N} where {N,T}
+    if size(a) == size(full_arr)
+        return full_arr
+    end
+    return _unbroadcast_to_shape(size(a), full_arr)
+end
+
+"""
+"Unbroadcasts" `full_arr` to have shape `target_shape` by:
+
+* Summing over all dims that would be increased by a broadcast from shape
+  `target_shape` to shape `size(full_arr)`
+* Then dropping trailing dims (which will all be 1's) as needed so that the
+  result has shape `target_shape`.
+
+Requires that `size(full_arr)` is "strictly bigger" than `target_shape`, in the
+sense that
+
+    Broadcast.broadcast_shapes(target_shape, size(full_arr)) == size(full_arr)
+"""
+function _unbroadcast_to_shape(target_shape::NTuple{target_ndims, Int},
+                               full_arr::AbstractArray{T, full_ndims}
+                         ) where {T, target_ndims, full_ndims}
+    @assert full_ndims >= target_ndims
+    should_sum_dim(i) = (i > target_ndims) || (target_shape[i] == 1 &&
+                                               size(full_arr, i) > 1)
+    dropdims(sum(full_arr; dims=filter(should_sum_dim, 1:full_ndims));
+             dims=Dims(target_ndims + 1 : full_ndims))
 end
 
 random(::Normal, mu::Real, std::Real) = mu + std * randn()

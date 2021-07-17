@@ -21,7 +21,13 @@ function finite_diff(f::Function, args::Tuple, i::Int, dx::Float64;
     if broadcast
         pos_args[i] = copy(args[i]) .+ dx
         neg_args[i] = copy(args[i]) .- dx
-        return (f(pos_args...) - f(neg_args...)) ./ (2. * dx)
+        ans = (f(pos_args...) - f(neg_args...)) ./ (2. * dx)
+        # Workaround for
+        # https://github.com/probcomp/Gen.jl/pull/433#discussion_r669958584
+        if args[i] isa AbstractArray && ndims(args[i]) == 0
+            return fill(ans)
+        end
+        return ans
     else
         pos_args[i] += dx
         neg_args[i] -= dx
@@ -72,6 +78,26 @@ function finite_diff_arr(f::Function, args::Tuple, i::Int, idx, dx::Float64)
     neg_args = Any[deepcopy(args)...]
     neg_args[i][idx] -= dx
     return (f(pos_args...) - f(neg_args...)) / (2. * dx)
+end
+
+"""
+Returns the partial derivatives of `f` with respect to all entries of
+`args[i]`.
+
+That is, returns an array of the same shape as `args[i]`, each entry of which
+is [`finite_diff_arr`](@ref) applied to the corresponding entry of `args[i]`.
+
+Requires that `args[i]` have nonzero rank.  Due to [1], handling
+zero-dimensional arrays properly in this function is not feasible; the caller
+should handle that case on their own.
+
+[1] https://github.com/JuliaLang/julia/issues/28866
+"""
+function finite_diff_arr_fullarg(f::Function, args::Tuple, i::Int, dx::Float64)
+    @assert args[i] isa AbstractArray
+    @assert ndims(args[i]) > 0
+    return [finite_diff_arr(f, args, i, idx, dx)
+            for idx in keys(args[i])]
 end
 
 const dx = 1e-6

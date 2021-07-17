@@ -123,9 +123,14 @@ end
     x = broadcasted_normal(fill(0), fill(1))
 
     # logpdf_grad
-    f = (x, mu, std) -> logpdf(broadcasted_normal, x, mu, std)
+    f(x, mu, std) = logpdf(broadcasted_normal, x, mu, std)
     args = (fill(0.4), fill(0.2), fill(0.3))
     actual = logpdf_grad(broadcasted_normal, args...)
+
+    @test actual[1] isa AbstractArray && size(actual[1]) == ()
+    @test actual[2] isa AbstractArray && size(actual[2]) == ()
+    @test actual[3] isa AbstractArray && size(actual[3]) == ()
+
     @test isapprox(actual[1], finite_diff(f, args, 1, dx; broadcast=true))
     @test isapprox(actual[2], finite_diff(f, args, 2, dx; broadcast=true))
     @test isapprox(actual[3], finite_diff(f, args, 3, dx; broadcast=true))
@@ -144,12 +149,17 @@ end
     broadcasted_normal(mu, std)
 
     # logpdf_grad
-    f = (x, mu, std) -> logpdf(broadcasted_normal, x, mu, std)
-    args = (mu, std, x)
+    f(x_, mu_, std_) = logpdf(broadcasted_normal, x_, mu_, std_)
+    args = (x, mu, std)
     actual = logpdf_grad(broadcasted_normal, args...)
-    @test isapprox(actual[1], finite_diff(f, args, 1, dx; broadcast=true))
-    @test isapprox(actual[2], finite_diff(f, args, 2, dx; broadcast=true))
-    @test isapprox(actual[3], finite_diff(f, args, 3, dx; broadcast=true))
+
+    @test actual[1] isa AbstractArray && size(actual[1]) == (2, 3)
+    @test actual[2] isa AbstractArray && size(actual[2]) == (2, 3)
+    @test actual[3] isa AbstractArray && size(actual[3]) == (2, 3)
+
+    @test isapprox(actual[1], finite_diff_arr_fullarg(f, args, 1, dx); rtol=1e-7)
+    @test isapprox(actual[2], finite_diff_arr_fullarg(f, args, 2, dx); rtol=1e-7)
+    @test isapprox(actual[3], finite_diff_arr_fullarg(f, args, 3, dx); rtol=1e-7)
 end
 
 @testset "broadcasted normal" begin
@@ -162,9 +172,9 @@ end
     ## Return shape of `logpdf` and `logpdf_grad`
     @test size(logpdf(broadcasted_normal,
                       ones(2, 4), ones(2, 1), ones(1, 4))) == ()
-    @test all(size(g) == ()
-              for g in logpdf_grad(
-                  broadcasted_normal, ones(2, 4), ones(2, 1), ones(1, 4)))
+    @test [size(g) for g in logpdf_grad(
+                  broadcasted_normal, ones(2, 4), ones(2, 1), ones(1, 4))
+          ] == [(2, 4), (2, 1), (1, 4)]
     # `x` has the wrong shape
     @test_throws DimensionMismatch logpdf(broadcasted_normal,
                                           ones(1, 2), ones(1,3), ones(2,1))
@@ -182,7 +192,8 @@ end
     @test_throws DimensionMismatch logpdf_grad(broadcasted_normal,
                                                ones(2, 1), ones(1,2), ones(1,3))
 
-    ## Equivalence of broadcast to supplying bigger arrays for `mu` and `std`
+    ## For `logpdf`, equivalence of broadcast to supplying bigger arrays for
+    ## `mu` and `std`
     compact = OrderedDict(:x => reshape([ 0.2  0.3  0.4  0.5 ;
                                           0.5  0.4  0.3  0.2 ],
                                         (2, 4)),
@@ -195,8 +206,6 @@ end
                            :std => repeat(compact[:std], outer=(1, 4)))
     @test (logpdf(broadcasted_normal, values(compact)...) ==
            logpdf(broadcasted_normal, values(expanded)...))
-    @test (logpdf_grad(broadcasted_normal, values(compact)...) ==
-           logpdf_grad(broadcasted_normal, values(expanded)...))
 end
 
 @testset "multivariate normal" begin
